@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR Case Management Flow — Reforged Studios</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f5f4f0;
+    padding: 32px 20px 60px;
+    min-height: 100vh;
+    color: #1a1a1a;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 8px;
+  }
+
+  .click-hint {
+    text-align: center;
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 28px;
+    font-style: italic;
+  }
+
+  /* ---- SHARED SECTION ---- */
+  .shared {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* ---- CARDS ---- */
+  .card {
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    width: 100%;
+    user-select: none;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+
+  .card .title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+  .card .sub   { font-size: 11px; font-weight: 400; margin-top: 3px; line-height: 1.4; opacity: 0.8; }
+  .card .more  { font-size: 10px; margin-top: 5px; opacity: 0.55; letter-spacing: 0.3px; }
+
+  .pill { border-radius: 999px; }
+
+  /* non-clickable nodes */
+  .plain {
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: center;
+    width: 100%;
+  }
+  .plain .title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+  .plain .sub   { font-size: 11px; font-weight: 400; margin-top: 3px; line-height: 1.4; opacity: 0.8; }
+
+  /* colours */
+  .gray   { background: #e8e6e0; color: #2c2c2a; border: 1px solid #ccc9c0; }
+  .teal   { background: #d4f0e4; color: #085041; border: 1px solid #9FE1CB; }
+  .purple { background: #e4e2fc; color: #26215C; border: 1px solid #AFA9EC; }
+  .blue   { background: #daeaf8; color: #042C53; border: 1px solid #85B7EB; }
+  .coral  { background: #fce8e0; color: #4A1B0C; border: 1px solid #F0997B; }
+  .red    { background: #fce8e8; color: #501313; border: 1px dashed #F09595; }
+  .green-pill {
+    font-size: 10px; font-weight: 600;
+    color: #085041; background: #d4f0e4;
+    border: 1px solid #9FE1CB; border-radius: 999px;
+    padding: 4px 10px; white-space: nowrap;
+  }
+
+  /* connectors */
+  .vline {
+    width: 2px; background: #bbb;
+    margin: 0 auto; position: relative;
+  }
+  .vline.arrow::after {
+    content: '';
+    position: absolute;
+    bottom: -6px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid #bbb;
+  }
+  .vlabel { font-size: 11px; color: #888; text-align: center; }
+
+  /* exit row */
+  .exit-row { display: flex; align-items: center; width: 100%; gap: 0; }
+  .exit-row .decision { flex: 1; min-width: 0; }
+  .exit-side { display: flex; align-items: center; gap: 5px; flex-shrink: 0; padding-left: 6px; }
+  .harrow {
+    width: 22px; height: 2px; background: #1D9E75;
+    position: relative; flex-shrink: 0;
+  }
+  .harrow::after {
+    content: '';
+    position: absolute;
+    right: -6px; top: 50%;
+    transform: translateY(-50%);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 7px solid #1D9E75;
+  }
+  .exit-label { font-size: 10px; color: #888; white-space: nowrap; }
+
+  /* track headers */
+  .track-header {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    padding: 6px 18px; border-radius: 999px;
+  }
+  .track-header.cap { background: #daeaf8; color: #0C447C; border: 1px solid #85B7EB; }
+  .track-header.con { background: #fce8e0; color: #712B13; border: 1px solid #F0997B; }
+
+  /* two-track wrapper */
+  .two-tracks {
+    display: flex;
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    align-items: flex-start;
+  }
+
+  .track {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 14px;
+  }
+
+  .track.left { border-right: 1px solid #ddd; }
+
+  /* ---- MODAL ---- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    animation: modalIn 0.18s ease;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .modal-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .modal-header h2 { font-size: 15px; font-weight: 600; color: #1a1a1a; line-height: 1.3; }
+
+  .modal-tag {
+    font-size: 10px; font-weight: 600;
+    border-radius: 4px; padding: 3px 8px;
+    white-space: nowrap; flex-shrink: 0;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+
+  .close-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: #999; flex-shrink: 0;
+    padding: 0 0 0 8px; line-height: 1;
+  }
+  .close-btn:hover { color: #333; }
+
+  .modal-body { padding: 16px 20px; }
+
+  .modal-section { margin-bottom: 16px; }
+  .modal-section:last-child { margin-bottom: 0; }
+
+  .modal-section h3 {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: #888; margin-bottom: 8px;
+  }
+
+  .modal-section p {
+    font-size: 13px; color: #333; line-height: 1.6;
+  }
+
+  .modal-section ul {
+    list-style: none; padding: 0;
+  }
+
+  .modal-section ul li {
+    font-size: 13px; color: #333; line-height: 1.6;
+    padding: 3px 0 3px 16px; position: relative;
+  }
+
+  .modal-section ul li::before {
+    content: '→';
+    position: absolute; left: 0;
+    color: #aaa; font-size: 11px; top: 5px;
+  }
+
+  .modal-links { display: flex; flex-direction: column; gap: 8px; }
+
+  .modal-link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px;
+    background: #f5f4f0; border-radius: 6px;
+    text-decoration: none; color: #1a1a1a;
+    font-size: 12px; font-weight: 500;
+    border: 1px solid #e0ddd6;
+    transition: background 0.12s;
+  }
+  .modal-link:hover { background: #eceae3; }
+  .modal-link .link-icon { font-size: 14px; }
+  .modal-link .link-meta { font-size: 10px; color: #999; font-weight: 400; margin-top: 1px; }
+
+  .warning-box {
+    background: #fff8e6; border: 1px solid #f5c842;
+    border-radius: 6px; padding: 10px 12px;
+    font-size: 12px; color: #7a5c00; line-height: 1.5;
+  }
+
+  /* legend */
+  .legend {
+    max-width: 860px; margin: 32px auto 0;
+    display: flex; flex-wrap: wrap; gap: 8px 20px;
+    background: white; border: 1px solid #e0ddd6;
+    border-radius: 8px; padding: 14px 18px;
+  }
+  .legend-title { width: 100%; font-size: 11px; font-weight: 600; color: #888; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #555; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .legend-item .click-note { font-size: 10px; color: #aaa; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>HR Case Management Flow</h1>
+<p class="subtitle">Reforged Studios — People &amp; Culture</p>
+<p class="click-hint">Click any coloured card for more detail and ACAS guidance</p>
+
+<!-- ===== SHARED TOP ===== -->
+<div class="shared">
+
+  <div class="plain pill gray" style="max-width:220px;">
+    <div class="title">Concern identified</div>
+  </div>
+
+  <div class="vline arrow" style="height:18px;"></div>
+
+  <div class="card teal" style="max-width:360px;" onclick="openModal('informal')">
+    <div class="title">Informal management</div>
+    <div class="sub">Conversation, clarify expectations, agree support</div>
+    <div class="more">Click for detail ↓</div>
+  </div>
+
+  <div class="vline arrow" style="height:18px;"></div>
+
+  <div class="exit-row" style="max-width:480px; margin:0 auto;">
+    <div class="decision plain gray" style="max-width:none;">
+      <div class="title">Resolved informally?</div>
+    </div>
+    <div class="exit-side">
+      <div class="harrow"></div>
+      <span class="exit-label">Yes</span>
+      <div class="green-pill">Complete ✓</div>
+    </div>
+  </div>
+
+  <div class="vlabel">No</div>
+  <div class="vline arrow" style="height:14px;"></div>
+
+  <div class="card purple" style="max-width:360px;" onclick="openModal('investigation')">
+    <div class="title">Investigation</div>
+    <div class="sub">Fact-finding only — no predetermined outcome</div>
+    <div class="more">Click for detail ↓</div>
+  </div>
+
+  <div class="vline arrow" style="height:18px;"></div>
+
+  <div class="plain gray" style="max-width:360px;">
+    <div class="title">Capability or conduct?</div>
+    <div class="sub">Can they not meet the standard, or are they choosing not to?</div>
+  </div>
+
+  <div style="height:20px; display:flex; align-items:flex-end; width:100%; max-width:820px; justify-content:center;">
+    <div style="flex:1; height:2px; background:#bbb;"></div>
+    <div style="width:2px; height:20px; background:#bbb;"></div>
+    <div style="flex:1; height:2px; background:#bbb;"></div>
+  </div>
+
+  <div style="display:flex; width:100%; max-width:820px; justify-content:space-around;">
+    <div style="display:flex; flex-direction:column; align-items:center;">
+      <div style="width:2px; height:12px; background:#bbb;"></div>
+      <div class="track-header cap">Capability track</div>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center;">
+      <div style="width:2px; height:12px; background:#bbb;"></div>
+      <div class="track-header con">Conduct track</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== TWO TRACKS ===== -->
+<div class="two-tracks">
+
+  <!-- CAPABILITY -->
+  <div class="track left">
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="card blue" onclick="openModal('cap-meeting')">
+      <div class="title">Formal capability meeting</div>
+      <div class="sub">Written invite, right to be accompanied. PIP agreed.</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="card blue" onclick="openModal('cap-reviews')">
+      <div class="title">Regular review meetings</div>
+      <div class="sub">Documented throughout the PIP period</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="exit-row">
+      <div class="decision plain gray" style="max-width:none;"><div class="title">Sufficient progress?</div></div>
+      <div class="exit-side">
+        <div class="harrow"></div>
+        <span class="exit-label">Yes</span>
+        <div class="green-pill">Complete ✓</div>
+      </div>
+    </div>
+    <div class="vlabel">No</div>
+    <div class="vline arrow" style="height:10px;"></div>
+
+    <div class="card blue" onclick="openModal('cap-first')">
+      <div class="title">First capability warning</div>
+      <div class="sub">Active 6 months. PIP extended or reset.</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="card blue" onclick="openModal('cap-reviews')">
+      <div class="title">Further review period</div>
+      <div class="sub">Continue monitoring and documenting</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="exit-row">
+      <div class="decision plain gray" style="max-width:none;"><div class="title">Sufficient progress?</div></div>
+      <div class="exit-side">
+        <div class="harrow"></div>
+        <span class="exit-label">Yes</span>
+        <div class="green-pill">Complete ✓</div>
+      </div>
+    </div>
+    <div class="vlabel">No</div>
+    <div class="vline arrow" style="height:10px;"></div>
+
+    <div class="card blue" onclick="openModal('cap-final')">
+      <div class="title">Final capability warning</div>
+      <div class="sub">Active 12 months. Dismissal is next step.</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="exit-row">
+      <div class="decision plain gray" style="max-width:none;"><div class="title">Sufficient progress?</div></div>
+      <div class="exit-side">
+        <div class="harrow"></div>
+        <span class="exit-label">Yes</span>
+        <div class="green-pill">Complete ✓</div>
+      </div>
+    </div>
+    <div class="vlabel">No</div>
+    <div class="vline arrow" style="height:10px;"></div>
+
+    <div class="card coral" onclick="openModal('cap-dismissal')">
+      <div class="title">Dismissal on capability grounds</div>
+      <div class="sub">Separate formal meeting, confirmed in writing</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="card gray" onclick="openModal('appeal')">
+      <div class="title">Right of appeal</div>
+      <div class="sub">Must be offered at every formal stage</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+  </div>
+
+  <!-- CONDUCT -->
+  <div class="track">
+
+    <div class="vline" style="height:14px;"></div>
+
+    <div class="card red" onclick="openModal('gross')">
+      <div class="title">⚡ Gross misconduct?</div>
+      <div class="sub">Serious enough to skip warnings — enter here</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="card coral" onclick="openModal('hearing')">
+      <div class="title">Disciplinary hearing</div>
+      <div class="sub">Written invite, 48hrs notice, right to be accompanied</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="exit-row">
+      <div class="decision plain gray" style="max-width:none;">
+        <div class="title">Outcome decision</div>
+        <div class="sub" style="font-size:10px;">Adjourn before deciding</div>
+      </div>
+      <div class="exit-side">
+        <div class="harrow"></div>
+        <span class="exit-label">No action</span>
+        <div class="green-pill">Complete ✓</div>
+      </div>
+    </div>
+
+    <div class="vlabel">Warning issued ↓</div>
+    <div class="vline arrow" style="height:10px;"></div>
+
+    <div class="card coral" onclick="openModal('con-first')">
+      <div class="title">First written warning</div>
+      <div class="sub">Active 6 months. Right of appeal applies.</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="exit-row">
+      <div class="decision plain gray" style="max-width:none;"><div class="title">Further issues?</div></div>
+      <div class="exit-side">
+        <div class="harrow"></div>
+        <span class="exit-label">No</span>
+        <div class="green-pill">Complete ✓</div>
+      </div>
+    </div>
+    <div class="vlabel">Yes</div>
+    <div class="vline arrow" style="height:10px;"></div>
+
+    <div class="card coral" onclick="openModal('con-final')">
+      <div class="title">Final written warning</div>
+      <div class="sub">Active 12 months. Dismissal is next step.</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="exit-row">
+      <div class="decision plain gray" style="max-width:none;"><div class="title">Further issues?</div></div>
+      <div class="exit-side">
+        <div class="harrow"></div>
+        <span class="exit-label">No</span>
+        <div class="green-pill">Complete ✓</div>
+      </div>
+    </div>
+    <div class="vlabel">Yes</div>
+    <div class="vline arrow" style="height:10px;"></div>
+
+    <div class="card coral" onclick="openModal('con-dismissal')">
+      <div class="title">Dismissal on conduct grounds</div>
+      <div class="sub">Separate formal hearing, confirmed in writing</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+    <div class="vline arrow" style="height:14px;"></div>
+
+    <div class="card gray" onclick="openModal('appeal')">
+      <div class="title">Right of appeal</div>
+      <div class="sub">Must be offered at every formal stage</div>
+      <div class="more">Click for detail ↓</div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-title">Key</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#d4f0e4;border:1px solid #9FE1CB;"></div> Informal / resolved <span class="click-note">&nbsp;— click for detail</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e4e2fc;border:1px solid #AFA9EC;"></div> Investigation <span class="click-note">&nbsp;— click for detail</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#daeaf8;border:1px solid #85B7EB;"></div> Capability track</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fce8e0;border:1px solid #F0997B;"></div> Conduct track</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fce8e8;border:1px dashed #F09595;"></div> Gross misconduct</div>
+</div>
+
+<p style="text-align:center;font-size:10px;color:#bbb;margin-top:20px;">Reforged Studios — People &amp; Culture &nbsp;·&nbsp; Aligned with ACAS Code of Practice (2015)</p>
+
+<!-- ===== MODAL ===== -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <div>
+        <div class="modal-tag" id="modalTag"></div>
+        <h2 id="modalTitle" style="margin-top:6px;"></h2>
+      </div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const modals = {
+
+  informal: {
+    tag: 'Informal', tagColor: '#085041', tagBg: '#d4f0e4',
+    title: 'Informal management',
+    sections: [
+      { heading: 'What this stage is', text: 'The first and lowest-level response to a concern. No formal record, no disciplinary implications. The goal is to resolve the issue early without escalating.' },
+      { heading: 'What to do', list: [
+        'Have a private, confidential conversation',
+        'Be specific about the concern with examples',
+        'Clarify what the expected standard looks like',
+        'Agree what support or changes are needed',
+        'Keep informal notes for your own reference only',
+        'Set a timeframe to review progress'
+      ]},
+      { heading: 'Important', warning: 'Informal action does not constitute a disciplinary warning and should not be referred to as one. If things do escalate later, keep this stage clearly separate in your records.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Dealing with performance issues', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/managing-performance' },
+        { label: 'Having difficult conversations at work', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/having-difficult-conversations' }
+      ]}
+    ]
+  },
+
+  investigation: {
+    tag: 'Shared', tagColor: '#26215C', tagBg: '#e4e2fc',
+    title: 'Investigation',
+    sections: [
+      { heading: 'Purpose', text: 'A fact-finding process only. The investigation does not determine guilt or outcome — it gathers enough information to decide whether a formal hearing is warranted.' },
+      { heading: 'Key principles', list: [
+        'Appoint an investigator and a separate decision-maker where possible',
+        'The employee does not usually have the right to be accompanied at investigation meetings',
+        'Gather evidence from all relevant parties — not just the line manager',
+        'Document everything and keep it confidential',
+        'Complete promptly — unreasonable delay is a breach of the ACAS Code'
+      ]},
+      { heading: 'Capability vs conduct', text: 'Use the investigation to determine which track applies. Capability = cannot do the job. Conduct = choosing not to, or behaving inappropriately. The process, language, and legal test differ between the two.' },
+      { heading: 'Important', warning: 'If the investigation reveals a different issue than the one you started with (e.g. performance concern uncovers misconduct), stop and reassess which process to follow before proceeding.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Investigations for discipline and grievance', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/investigations-for-discipline-and-grievance-step-by-step' },
+        { label: 'ACAS Code of Practice (2015)', meta: 'acas.org.uk — full code', url: 'https://www.acas.org.uk/acas-code-of-practice-on-disciplinary-and-grievance-procedures' }
+      ]}
+    ]
+  },
+
+  'cap-meeting': {
+    tag: 'Capability', tagColor: '#042C53', tagBg: '#daeaf8',
+    title: 'Formal capability meeting',
+    sections: [
+      { heading: 'Purpose', text: 'To formally address that the employee is not meeting the required standard, and to agree a structured plan to support improvement. This is not a disciplinary — the tone should be supportive, not punitive.' },
+      { heading: 'Before the meeting', list: [
+        'Issue a written invitation with reasonable notice',
+        'State clearly this is a formal capability meeting',
+        'Confirm their right to be accompanied (colleague or trade union rep)',
+        'Prepare specific examples of where the standard has not been met'
+      ]},
+      { heading: 'At the meeting', list: [
+        'Present the concern and give examples',
+        'Allow the employee to respond fully',
+        'Explore any underlying reasons (health, personal circumstances, lack of support)',
+        'Agree a PIP — targets must be specific, measurable and achievable',
+        'Set a clear review date',
+        'Confirm what support will be provided'
+      ]},
+      { heading: 'After the meeting', list: [
+        'Confirm the outcome and PIP in writing',
+        'Confirm the right of appeal'
+      ]},
+      { heading: 'ACAS guidance', links: [
+        { label: 'Managing underperformance', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/managing-performance' },
+        { label: 'Disciplinary and grievance procedures (Code)', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/acas-code-of-practice-on-disciplinary-and-grievance-procedures' }
+      ]}
+    ]
+  },
+
+  'cap-reviews': {
+    tag: 'Capability', tagColor: '#042C53', tagBg: '#daeaf8',
+    title: 'Review meetings',
+    sections: [
+      { heading: 'Why this matters', text: 'Regular documented reviews are your evidence that the process was fair, that support was genuine, and that the employee had a meaningful opportunity to improve. Employers lose tribunal cases here when they cannot prove adequate monitoring and support.' },
+      { heading: 'What to do at each review', list: [
+        'Compare performance against the PIP targets specifically',
+        'Note what has improved and what has not',
+        'Record what support has been provided and how the employee engaged with it',
+        'Agree any adjustments to targets if circumstances have changed',
+        'Confirm next review date in writing'
+      ]},
+      { heading: 'Frequency', text: 'At minimum, one formal review at the mid-point and one at the end of the PIP period. For shorter PIPs (4-6 weeks), weekly informal check-ins with a formal mid-review is reasonable.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Performance improvement plans', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/managing-performance' }
+      ]}
+    ]
+  },
+
+  'cap-first': {
+    tag: 'Capability', tagColor: '#042C53', tagBg: '#daeaf8',
+    title: 'First capability warning',
+    sections: [
+      { heading: 'When to issue', text: 'Issued when the first review period ends and the employee has not made sufficient improvement against the PIP targets.' },
+      { heading: 'The warning must confirm', list: [
+        'The nature of the capability concern',
+        'What improvement is required and by when',
+        'The support that will continue to be provided',
+        'That the warning is active for 6 months',
+        'What will happen if improvement is not sustained',
+        'The right of appeal'
+      ]},
+      { heading: 'Process', text: 'Issue via a formal meeting with right to be accompanied. Do not issue a warning in writing without a meeting first — this would breach natural justice.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Disciplinary and grievance procedures (Code)', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/acas-code-of-practice-on-disciplinary-and-grievance-procedures' },
+        { label: 'Managing underperformance step by step', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/managing-performance-step-by-step' }
+      ]}
+    ]
+  },
+
+  'cap-final': {
+    tag: 'Capability', tagColor: '#042C53', tagBg: '#daeaf8',
+    title: 'Final capability warning',
+    sections: [
+      { heading: 'When to issue', text: 'Issued when the employee has not made sufficient improvement following a first capability warning and further review period.' },
+      { heading: 'The warning must confirm', list: [
+        'All the same elements as the first warning',
+        'That this is a final warning',
+        'That dismissal on capability grounds is the next step if improvement is not made and sustained',
+        'That the warning is active for 12 months',
+        'The right of appeal'
+      ]},
+      { heading: 'Important', warning: 'The employee must be in no doubt that dismissal is the likely outcome if the standard is not met. Vague language here is a common reason capability dismissals are found unfair at tribunal.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Disciplinary and grievance procedures (Code)', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/acas-code-of-practice-on-disciplinary-and-grievance-procedures' }
+      ]}
+    ]
+  },
+
+  'cap-dismissal': {
+    tag: 'Capability', tagColor: '#4A1B0C', tagBg: '#fce8e0',
+    title: 'Dismissal on capability grounds',
+    sections: [
+      { heading: 'When this applies', text: 'The employee has not met the required standard despite a fair process, genuine support, and a final warning. The legal test is whether a reasonable employer could have concluded the employee was incapable of meeting the standard.' },
+      { heading: 'The process', list: [
+        'Invite to a separate formal meeting — do not issue dismissal without a hearing',
+        'Written invite, right to be accompanied',
+        'Confirm that dismissal is a possible outcome in the invite',
+        'Allow the employee to respond before deciding',
+        'Adjourn before reaching a decision',
+        'Confirm the outcome in writing with full reasons',
+        'Confirm the notice period or payment in lieu',
+        'Confirm the right of appeal'
+      ]},
+      { heading: 'Malta consideration', warning: 'If the employee is based in Malta, termination on capability grounds has different procedural and notice requirements under Maltese employment law. Take separate advice before proceeding.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Dismissals — ACAS guide', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/dismissals' },
+        { label: 'Unfair dismissal', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/unfair-dismissal' }
+      ]}
+    ]
+  },
+
+  hearing: {
+    tag: 'Conduct', tagColor: '#4A1B0C', tagBg: '#fce8e0',
+    title: 'Disciplinary hearing',
+    sections: [
+      { heading: 'Before the hearing', list: [
+        'Issue a written invitation — minimum 48 hours notice (more is better)',
+        'Set out clearly what the concern is and what evidence will be considered',
+        'Confirm the possible outcomes including dismissal if applicable',
+        'Confirm the right to be accompanied by a colleague or trade union rep',
+        'Share any evidence in advance so the employee can prepare'
+      ]},
+      { heading: 'At the hearing', list: [
+        'Present the evidence and explain the concern',
+        'Give the employee the opportunity to respond fully',
+        'Allow their companion to speak on their behalf if they wish',
+        'Ask questions and allow the employee to ask questions',
+        'Adjourn before reaching any decision — never decide in the room'
+      ]},
+      { heading: 'After adjourning', list: [
+        'Consider all the evidence and the employee\'s response',
+        'Decide on the outcome',
+        'Confirm in writing with full reasons',
+        'Confirm the right of appeal'
+      ]},
+      { heading: 'ACAS guidance', links: [
+        { label: 'Disciplinary hearings step by step', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/disciplinary-procedure-step-by-step/step-4-the-disciplinary-hearing' },
+        { label: 'Right to be accompanied', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/the-right-to-be-accompanied-at-a-disciplinary-or-grievance-hearing' }
+      ]}
+    ]
+  },
+
+  'con-first': {
+    tag: 'Conduct', tagColor: '#4A1B0C', tagBg: '#fce8e0',
+    title: 'First written warning',
+    sections: [
+      { heading: 'When to issue', text: 'The concern has been upheld following a disciplinary hearing and the conduct warrants formal action short of a final warning.' },
+      { heading: 'The warning must confirm', list: [
+        'The nature of the conduct concern',
+        'What behaviour must change',
+        'That the warning is active for 6 months',
+        'What will happen if the behaviour continues or similar issues arise',
+        'The right of appeal'
+      ]},
+      { heading: 'After the warning expires', text: 'A spent warning should not be used as the basis for escalation. However it can be referred to as background context in some circumstances — check your policy wording.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Disciplinary and grievance procedures (Code)', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/acas-code-of-practice-on-disciplinary-and-grievance-procedures' },
+        { label: 'Disciplinary procedure step by step', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/disciplinary-procedure-step-by-step' }
+      ]}
+    ]
+  },
+
+  'con-final': {
+    tag: 'Conduct', tagColor: '#4A1B0C', tagBg: '#fce8e0',
+    title: 'Final written warning',
+    sections: [
+      { heading: 'When to issue', text: 'Further issues have arisen while a first written warning is live, or the original conduct was serious enough to go straight to a final warning.' },
+      { heading: 'The warning must confirm', list: [
+        'All the same elements as the first warning',
+        'That this is a final warning',
+        'That dismissal is the next step if further issues arise',
+        'That the warning is active for 12 months',
+        'The right of appeal'
+      ]},
+      { heading: 'Important', warning: 'The employee must be in absolutely no doubt that dismissal is the consequence of any further issues. This is the last formal step before dismissal and the warning letter must reflect that clearly.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Disciplinary and grievance procedures (Code)', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/acas-code-of-practice-on-disciplinary-and-grievance-procedures' }
+      ]}
+    ]
+  },
+
+  'con-dismissal': {
+    tag: 'Conduct', tagColor: '#4A1B0C', tagBg: '#fce8e0',
+    title: 'Dismissal on conduct grounds',
+    sections: [
+      { heading: 'When this applies', text: 'Further issues have arisen after a final written warning, or the conduct is serious enough to warrant dismissal at a first hearing (gross misconduct). The legal test is whether a reasonable employer, having followed a fair process, could have concluded that dismissal was within the band of reasonable responses.' },
+      { heading: 'The process', list: [
+        'Separate formal hearing — do not dismiss without one',
+        'Written invite, right to be accompanied',
+        'Confirm dismissal is a possible outcome in the invite',
+        'Present evidence, allow full response',
+        'Adjourn before deciding',
+        'Confirm in writing with full reasons',
+        'Confirm notice entitlement or payment in lieu',
+        'Confirm the right of appeal'
+      ]},
+      { heading: 'Malta consideration', warning: 'If the employee is based in Malta, dismissal has different procedural and notice requirements under Maltese employment law. Take separate advice before proceeding.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Dismissals — ACAS guide', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/dismissals' },
+        { label: 'Unfair dismissal', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/unfair-dismissal' }
+      ]}
+    ]
+  },
+
+  gross: {
+    tag: 'Gross Misconduct', tagColor: '#501313', tagBg: '#fce8e8',
+    title: 'Gross misconduct',
+    sections: [
+      { heading: 'What it means', text: 'Gross misconduct is conduct so serious that it fundamentally breaches the employment relationship and justifies dismissal without notice and without the need for prior warnings.' },
+      { heading: 'Common examples', list: [
+        'Theft, fraud or dishonesty',
+        'Physical violence or threatening behaviour',
+        'Serious harassment or bullying',
+        'Deliberate damage to company property',
+        'Serious breach of confidentiality',
+        'Being under the influence of drugs or alcohol at work',
+        'Serious or deliberate breach of health and safety rules'
+      ]},
+      { heading: 'Process still required', warning: 'Even for gross misconduct, you must still follow a fair process — investigation, written invite, hearing, right to be accompanied, right to respond, adjournment before deciding, written outcome, right of appeal. Skipping the process is the most common reason a gross misconduct dismissal is found unfair at tribunal.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Gross misconduct', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/dismissals/gross-misconduct' },
+        { label: 'Disciplinary and grievance procedures (Code)', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/acas-code-of-practice-on-disciplinary-and-grievance-procedures' }
+      ]}
+    ]
+  },
+
+  appeal: {
+    tag: 'Both tracks', tagColor: '#2c2c2a', tagBg: '#e8e6e0',
+    title: 'Right of appeal',
+    sections: [
+      { heading: 'When it applies', text: 'The right of appeal must be offered at every formal stage — first warning, final warning, and dismissal. It applies to both the capability and conduct tracks. Reforged\'s policy sets a 5 working day window for the employee to submit their appeal in writing.' },
+      { heading: 'How it works', list: [
+        'Employee submits written grounds of appeal within 5 working days',
+        'Appeal should be heard by someone not previously involved where possible',
+        'The appeal is a review — not a complete rehearing from scratch',
+        'Confirm the outcome of the appeal in writing',
+        'The appeal outcome is the final internal step'
+      ]},
+      { heading: 'Grounds for appeal', list: [
+        'The decision was not reasonable given the evidence',
+        'The process was not followed correctly',
+        'New evidence has come to light',
+        'The sanction was disproportionate'
+      ]},
+      { heading: 'Important', warning: 'Failure to offer a right of appeal is a breach of the ACAS Code and can lead to a tribunal uplift of up to 25% on any compensation award.' },
+      { heading: 'ACAS guidance', links: [
+        { label: 'Appeals in disciplinary procedures', meta: 'acas.org.uk', url: 'https://www.acas.org.uk/disciplinary-procedure-step-by-step/step-6-the-appeal' },
+        { label: 'ACAS Code of Practice (2015)', meta: 'acas.org.uk — full code', url: 'https://www.acas.org.uk/acas-code-of-practice-on-disciplinary-and-grievance-procedures' }
+      ]}
+    ]
+  }
+
+};
+
+function openModal(id) {
+  const data = modals[id];
+  if (!data) return;
+
+  document.getElementById('modalTag').textContent = data.tag;
+  document.getElementById('modalTag').style.background = data.tagBg;
+  document.getElementById('modalTag').style.color = data.tagColor;
+  document.getElementById('modalTitle').textContent = data.title;
+
+  let html = '';
+  data.sections.forEach(s => {
+    html += '<div class="modal-section">';
+    html += '<h3>' + s.heading + '</h3>';
+    if (s.text)    html += '<p>' + s.text + '</p>';
+    if (s.warning) html += '<div class="warning-box">⚠️ ' + s.warning + '</div>';
+    if (s.list) {
+      html += '<ul>';
+      s.list.forEach(item => { html += '<li>' + item + '</li>'; });
+      html += '</ul>';
+    }
+    if (s.links) {
+      html += '<div class="modal-links">';
+      s.links.forEach(link => {
+        html += '<a class="modal-link" href="' + link.url + '" target="_blank" rel="noopener">';
+        html += '<span class="link-icon">↗</span>';
+        html += '<span><div>' + link.label + '</div><div class="link-meta">' + link.meta + '</div></span>';
+        html += '</a>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('modalBox').scrollTop = 0;
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function closeModalOnOverlay(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>
